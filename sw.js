@@ -1,5 +1,5 @@
 // Network first for the app's own files, cached copy when offline.
-const C="gauntlet-v1";
+const C="gauntlet-v2";
 self.addEventListener("install",e=>self.skipWaiting());
 self.addEventListener("activate",e=>e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch",e=>{
