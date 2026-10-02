@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Data lives under /g/{passcode}/... Only someone who knows the passcode can reach it.
+    match /g/{key}/{document=**} {
+      allow read, write: if key.size() >= 12;
+    }
+  }
+}
