@@ -106,6 +106,24 @@ header.top{position:relative;z-index:10;background:color-mix(in srgb,var(--bg) 8
 .ball.on{background:var(--dc);border-color:var(--dc)}
 .ball svg{width:20px;height:20px;opacity:0}
 .ball.on svg{opacity:1}
+.ball.on.arr{border-color:var(--gold);box-shadow:0 0 0 2.5px var(--gold)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:-4px 2px 4px;font-size:12px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:50%;background:var(--dc);display:inline-block}
+.legend i.arr{box-shadow:0 0 0 2px var(--gold)}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.lrow.arr{border-color:color-mix(in srgb,var(--gold) 55%,var(--line))}
+.lrow .row{border:0;border-radius:0;background:transparent}
+.ship{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:8px 14px 10px}
+.ship small{color:var(--muted);font-size:12px}
+.tag{min-height:40px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--faint)}
+.tag.on{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 12%,transparent)}
+.tag.on::before{background:var(--gold)}
+.arrive{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.arrive button{min-height:52px;border-radius:12px;border:1.5px solid var(--line);font-weight:700}
+.arrive button[aria-pressed="true"]{border-color:var(--fg);background:var(--raise)}
+.arrive button[data-arr="1"][aria-pressed="true"]{border-color:var(--gold);color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent)}
 .ball.small{width:32px;height:32px}
 .ball.small svg{width:16px;height:16px}
 .empty{padding:32px 18px;text-align:center;color:var(--muted);background:var(--surface);border:1.5px dashed var(--line);border-radius:var(--r-md)}
@@ -222,7 +240,7 @@ const ART={
 const COLORS={g:"Green",u:"Blue",r:"Red",b:"Black",w:"White",c:"Colourless"};
 const CONDS=[["NM","Near mint"],["LP","Light"],["MP","Moderate"],["HP","Heavy"],["DMG","Damaged"]];
 const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-const S={decks:[],cards:[],buys:[],settings:{},deck:null,board:"main",todo:false,tab:"decks",db:null,me:(()=>{try{return localStorage.getItem("gauntlet-name")||""}catch{return ""}})(),mode:"",key:"",ready:{d:0,c:0,b:0},readOnly:false};
+const S={decks:[],cards:[],buys:[],settings:{},deck:null,board:"main",todo:false,logf:"all",tab:"decks",db:null,me:(()=>{try{return localStorage.getItem("gauntlet-name")||""}catch{return ""}})(),mode:"",key:"",ready:{d:0,c:0,b:0},readOnly:false};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fx=()=>Number(S.settings.fx)||16500;
@@ -249,11 +267,12 @@ function stats(deckId){let need=0,g=0,spent=0,left=0;for(const c of S.cards){if(
 function renderHeader(){const t=stats();$("#sSpent").textContent=rpk(t.spent);$("#sLeft").textContent=t.left?rpk(t.left):(t.need?"Rp 0":"—");$("#sCards").textContent=`${t.got}/${t.need}`;$("#sProg").style.width=(t.need?t.got/t.need*100:0)+"%"}
 function rail(){return `<div class="rail">${S.decks.map(d=>{const s=stats(d.id);const a=artFor(d);
   return `<button class="dk" style="--dc:${dc(d)}" data-deck="${d.id}" aria-pressed="${S.deck===d.id}">${a?`<img src="${a.src}" alt="">`:`<span class="fill"></span>`}<span class="shade"></span><span class="t"><b class="x">${esc(d.name)}</b><span>${s.got}/${s.need}</span><span class="mini"><i style="width:${s.need?s.got/s.need*100:0}%"></i></span></span></button>`}).join("")}</div>`}
-function ballsHTML(c,small){const n=got(c);let h="";for(let i=0;i<c.need;i++)h+=`<button class="ball${i<n?" on":""}${small?" small":""}" data-ball="${c.id}" data-i="${i}" aria-label="${esc(c.name)} copy ${i+1} ${i<n?"bought":"not bought"}">${CHECK}</button>`;
+function copyArr(c){const a=[];for(const b of buysFor(c.id))for(let k=0;k<(b.qty||0);k++)a.push(!!b.arrived);return a}
+function ballsHTML(c,small){const n=got(c);const arr=copyArr(c);let h="";for(let i=0;i<c.need;i++){const st=i<n?(arr[i]?"arrived":"bought, not arrived yet"):"not bought";h+=`<button class="ball${i<n?" on":""}${i<n&&arr[i]?" arr":""}${small?" small":""}" data-ball="${c.id}" data-i="${i}" aria-label="${esc(c.name)} copy ${i+1} ${st}">${CHECK}</button>`}
   if(n>c.need)h+=`<span class="chip">+${n-c.need} extra</span>`;return h}
 function cardHTML(c){const n=got(c);const bs=buysFor(c.id);const sp=spentOn(c);const s=sugIDR(c.name);const i=info(c.name);
   const sug=s!=null?`Suggested ${rpk(s)} each <span class="num">· $${i.m.toFixed(2)}</span>`:"No market price on file";
-  let paid="";if(bs.length){const eds=[...new Set(bs.map(b=>[b.set?b.set.toUpperCase():"",b.cond].filter(Boolean).join(" ")).filter(Boolean))];paid=`<span class="paid">Paid ${rp(sp)} <em>for ${n} · avg ${rpk(sp/Math.max(1,n))}${eds.length?" · "+esc(eds.join(", ")):""}</em></span>`}
+  let paid="";if(bs.length){const eds=[...new Set(bs.map(b=>[b.set?b.set.toUpperCase():"",b.cond].filter(Boolean).join(" ")).filter(Boolean))];const wait=bs.filter(b=>!b.arrived).reduce((a,b)=>a+b.qty,0);paid=`<span class="paid">Paid ${rp(sp)} <em>for ${n} · avg ${rpk(sp/Math.max(1,n))}${eds.length?" · "+esc(eds.join(", ")):""}${wait?` · ${wait} on the way`:""}</em></span>`}
   return `<div class="card${n>=c.need&&c.need?" done":""}"><div class="ch"><div class="cn"><b>${esc(c.name)}</b><span class="sug">${sug}</span>${paid}</div><span class="cnt">${n}/${c.need}</span></div><div class="balls">${ballsHTML(c,c.need>8)}</div></div>`}
 function viewDecks(){
   if(!S.decks.length)return `<div style="margin-top:16px" class="empty">${S.ready.d?"No decks yet. Add one in Decks setup.":"Loading your decks…"}</div>`;
@@ -264,7 +283,8 @@ function viewDecks(){
   <h2 class="dtitle x">${esc(d.name)}</h2>
   ${d.url?`<a class="glink" href="${esc(d.url)}" target="_blank" rel="noopener">View list on MTGGoldfish ↗</a>`:""}
   <div class="dmeta"><span class="chip"><b>${s.got}/${s.need}</b> cards</span><span class="chip">Spent <b>${rpk(s.spent)}</b></span>${s.left?`<span class="chip">Left ≈ <b>${rpk(s.left)}</b></span>`:""}</div>
-  <div class="seg"><button data-board="main" aria-pressed="${S.board==="main"}">Main · ${nm}</button><button data-board="side" aria-pressed="${S.board==="side"}">Side · ${ns}</button><button data-todo aria-pressed="${S.todo}">Missing</button></div>`;
+  <div class="seg"><button data-board="main" aria-pressed="${S.board==="main"}">Main · ${nm}</button><button data-board="side" aria-pressed="${S.board==="side"}">Side · ${ns}</button><button data-todo aria-pressed="${S.todo}">Missing</button></div>
+  <div class="legend"><span><i></i>Bought</span><span><i class="arr"></i>Bought &amp; arrived</span></div>`;
   const list=cs.filter(c=>c.board===S.board&&(!S.todo||got(c)<c.need));
   h+=list.length?`<div class="list">${list.map(cardHTML).join("")}</div>`:`<div class="empty">${S.todo?"Everything here is bought.":"No cards in this section."}</div>`;
   return h+"</section>"}
@@ -272,10 +292,15 @@ function shopGroups(){const m=new Map();for(const c of S.cards){if(!deckOf(c.dec
 function viewShop(){const gs=shopGroups();if(!gs.length)return `<h2 class="dtitle x">To buy</h2><div class="empty" style="margin-top:14px">${S.ready.c?"Nothing left to buy.":"Loading…"}</div>`;
   return `<h2 class="dtitle x">To buy</h2><p class="hint" style="margin:8px 0 14px">All decks combined, most expensive first. ${gs.reduce((a,g)=>a+g.left,0)} cards across ${gs.length} names.</p><div class="list">${gs.map(g=>{const s=sugIDR(g.name);const ds=[...new Set(g.rows.map(c=>c.deck))];
   return `<button class="row" data-shop="${esc(g.name)}"><span style="display:flex;gap:4px">${ds.map(x=>`<span class="dot" style="--dc:${dc(deckOf(x))}"></span>`).join("")}</span><span><b>${g.left}× ${esc(g.name)}</b><small>${ds.map(x=>esc(deckOf(x).name)).join(" · ")}${s?` · ≈ ${rpk(s)} each`:""}</small></span><span class="btn sm gold">Buy</span></button>`}).join("")}</div>`}
-function viewLog(){const bs=[...S.buys].sort((a,b)=>(b.at||0)-(a.at||0));const tot=bs.reduce((a,b)=>a+(b.total||0),0);
-  if(!bs.length)return `<h2 class="dtitle x">Purchases</h2><div class="empty" style="margin-top:14px">No purchases yet. Tap a ball on any card to log one.</div>`;
-  return `<h2 class="dtitle x">Purchases</h2><p class="hint" style="margin:8px 0 14px">${bs.length} purchases · ${rp(tot)} total</p><div class="list">${bs.map(b=>{const d=deckOf(b.deck);const who=b.by||"";
-  return `<button class="row" data-edit="${b.id}" style="--dc:${dc(d)}"><span class="dot"></span><span><b>${b.qty}× ${esc(b.name)}</b><small>${[d?.name,b.set?setName(b.set):"",b.cond,new Date(b.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}),who].filter(Boolean).map(esc).join(" · ")}</small></span><span style="text-align:right"><b class="num">${rpk(b.total)}</b><small class="num">${rpk(b.unit)} ea</small></span></button>`}).join("")}</div>`}
+function viewLog(){const all=[...S.buys].sort((a,b)=>(b.at||0)-(a.at||0));const tot=all.reduce((a,b)=>a+(b.total||0),0);
+  if(!all.length)return `<h2 class="dtitle x">Purchases</h2><div class="empty" style="margin-top:14px">No purchases yet. Tap a ball on any card to log one.</div>`;
+  const nWait=all.filter(b=>!b.arrived).reduce((a,b)=>a+b.qty,0),nArr=all.filter(b=>b.arrived).reduce((a,b)=>a+b.qty,0);
+  const bs=all.filter(b=>S.logf==="all"||(S.logf==="wait"?!b.arrived:b.arrived));
+  return `<h2 class="dtitle x">Purchases</h2><p class="hint" style="margin:8px 0 14px">${all.length} purchases · ${rp(tot)} total</p>
+  <div class="seg"><button data-logf="all" aria-pressed="${S.logf==="all"}">All</button><button data-logf="wait" aria-pressed="${S.logf==="wait"}">On the way · ${nWait}</button><button data-logf="arr" aria-pressed="${S.logf==="arr"}">Arrived · ${nArr}</button></div>
+  ${bs.length?`<div class="list">${bs.map(b=>{const d=deckOf(b.deck);const who=b.by||"";
+  return `<div class="lrow${b.arrived?" arr":""}" style="--dc:${dc(d)}"><button class="row" data-edit="${b.id}"><span class="dot"></span><span><b>${b.qty}× ${esc(b.name)}</b><small>${[d?.name,b.set?setName(b.set):"",b.cond,new Date(b.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}),who].filter(Boolean).map(esc).join(" · ")}</small></span><span style="text-align:right"><b class="num">${rpk(b.total)}</b><small class="num">${rpk(b.unit)} ea</small></span></button>
+  <div class="ship"><small>${b.arrived?`Arrived${b.arrivedAt?" "+new Date(b.arrivedAt).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""}`:"Bought, not delivered yet"}</small><button class="tag${b.arrived?" on":""}" data-arrive="${b.id}" aria-pressed="${!!b.arrived}">${b.arrived?"Arrived":"Mark arrived"}</button></div></div>`}).join("")}</div>`:`<div class="empty">${S.logf==="wait"?"Nothing on the way. Everything bought has arrived.":"Nothing marked as arrived yet."}</div>`}`}
 function viewSetup(){
   const decks=S.decks.map(d=>{const s=stats(d.id);return `<div class="drow"><span class="dot" style="--dc:${dc(d)}"></span><span class="nm"><b>${esc(d.name)}</b><small>${s.need} cards · ${s.got} bought</small></span><span class="acts"><button class="btn sm ghost" data-replace="${d.id}">Replace list</button><button class="btn sm danger" data-deldeck="${d.id}">Delete</button></span></div>`}).join("");
   return `<h2 class="dtitle x">Decks setup</h2><p class="hint" style="margin:8px 0 14px">Manage the gauntlet. Paste lists straight from MTGGoldfish: Download → Text File.</p>
@@ -329,19 +354,21 @@ function openBuy(rows,startQty){
   $("#bSave").onclick=async()=>{const u=parseIDR($("#bUnit").value);if(isNaN(u)){toast("Enter the price in rupiah");$("#bUnit").focus();return}
     const set=$("#bSet").value.trim();const cond=document.querySelector("#bCond [aria-pressed=true]")?.dataset.cond||"NM";
     $("#bSave").disabled=true;let rest=qty;const plan=[];for(const c of rows){const r=Math.max(0,c.need-got(c));if(!r)continue;const t=Math.min(r,rest);plan.push([c,t]);rest-=t;if(!rest)break}
-    const at=Date.now();try{for(const[c,n]of plan)await S.db.collection("buys").add({cardId:c.id,deck:c.deck,name:c.name,qty:n,unit:u,total:n*u,set:set.toLowerCase?set:"",cond,at,by:S.me||""});closeSheet();toast(`Logged ${qty}× ${name}`)}
+    const at=Date.now();try{for(const[c,n]of plan)await S.db.collection("buys").add({cardId:c.id,deck:c.deck,name:c.name,qty:n,unit:u,total:n*u,set:set.toLowerCase?set:"",cond,at,by:S.me||"",arrived:false});closeSheet();toast(`Logged ${qty}× ${name}`)}
     catch(e){fail(e);$("#bSave").disabled=false}}}
 function openEdit(buy){const deck=deckOf(buy.deck);const ro=S.readOnly;
   sheet(`<h3 class="x">${esc(buy.name)}</h3><p class="sub">${buy.qty} ${buy.qty>1?"copies":"copy"} · ${esc(deck?.name||"")} · ${new Date(buy.at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</p>
   ${ro?`<p class="hint">${rp(buy.unit)} each · ${esc(buy.set?setName(buy.set):"Edition not set")} · ${esc(buy.cond||"")}</p><button class="btn wide" data-close>Close</button>`:`
   <label class="f">Price paid per card<div class="money"><span>Rp</span><input id="bUnit" inputmode="numeric" value="${(buy.unit||0).toLocaleString("id-ID")}" autocomplete="off"></div></label>
   <div class="total"><small>Total</small><b class="num" id="bTot">${rp(buy.total)}</b></div>
+  <label class="f">Delivery</label><div class="arrive" id="bArr"><button data-arr="0" aria-pressed="${!buy.arrived}">Not arrived</button><button data-arr="1" aria-pressed="${!!buy.arrived}">Arrived</button></div>
   ${editionField(buy.name,buy.set)}${condField(buy.cond)}
   <div class="acts"><button class="btn danger" id="bDel">Remove</button><button class="btn gold" id="bSave">Save changes</button></div>`}`,deck);
-  if(ro)return;wireConds();$("#bUnit").oninput=()=>{const u=parseIDR($("#bUnit").value);$("#bTot").textContent=rp((isNaN(u)?0:u)*buy.qty)};
+  if(ro)return;wireConds();$("#bArr").onclick=e=>{const b=e.target.closest("[data-arr]");if(!b)return;document.querySelectorAll("#bArr button").forEach(x=>x.setAttribute("aria-pressed",x===b))};$("#bUnit").oninput=()=>{const u=parseIDR($("#bUnit").value);$("#bTot").textContent=rp((isNaN(u)?0:u)*buy.qty)};
   $("#bSave").onclick=async()=>{const u=parseIDR($("#bUnit").value);if(isNaN(u)){toast("Enter the price in rupiah");return}
-    try{await S.db.doc("buys/"+buy.id).update({unit:u,total:u*buy.qty,set:$("#bSet").value.trim(),cond:document.querySelector("#bCond [aria-pressed=true]")?.dataset.cond||"NM"});closeSheet();toast("Saved")}catch(e){fail(e)}};
+    try{await S.db.doc("buys/"+buy.id).update({unit:u,total:u*buy.qty,set:$("#bSet").value.trim(),cond:document.querySelector("#bCond [aria-pressed=true]")?.dataset.cond||"NM",...arrPatch(buy,document.querySelector("#bArr [aria-pressed=true]")?.dataset.arr==="1")});closeSheet();toast("Saved")}catch(e){fail(e)}};
   const del=$("#bDel");del.onclick=async()=>{if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="Tap to confirm";return}try{await S.db.doc("buys/"+buy.id).delete();closeSheet();toast("Purchase removed")}catch(e){fail(e)}}}
+function arrPatch(buy,on){return on===!!buy.arrived?{}:{arrived:on,arrivedAt:on?Date.now():null}}
 function wireConds(){$("#bCond").onclick=e=>{const b=e.target.closest("[data-cond]");if(!b)return;document.querySelectorAll("#bCond button").forEach(x=>x.setAttribute("aria-pressed",x===b))}}
 function fail(e){console.error(e);if(e&&e.code==="permission-denied")toast("The database refused this. Check the passcode.");else toast("Couldn't save. Check the connection and try again.")}
 
@@ -377,6 +404,9 @@ document.addEventListener("click",async e=>{const t=e.target.closest("button,[da
   if(t.dataset.ball){const c=S.cards.find(x=>x.id===t.dataset.ball);if(!c)return;const i=+t.dataset.i;const bs=buysFor(c.id);const n=got(c);
     if(i<n){let acc=0;for(const b of bs){acc+=b.qty;if(i<acc){openEdit(b);return}}}else openBuy([c],i+1-n);return}
   if(t.dataset.shop){const g=shopGroups().find(x=>x.name===t.dataset.shop);if(g)openBuy(g.rows);return}
+  if(t.dataset.logf){S.logf=t.dataset.logf;render();return}
+  if(t.dataset.arrive){const b=S.buys.find(x=>x.id===t.dataset.arrive);if(!b)return;const on=!b.arrived;t.disabled=true;
+    try{await S.db.doc("buys/"+b.id).update(arrPatch(b,on));toast(on?`${b.qty}× ${b.name} arrived`:`${b.name} marked as not arrived`)}catch(err){fail(err);t.disabled=false}return}
   if(t.dataset.edit){const b=S.buys.find(x=>x.id===t.dataset.edit);if(b)openEdit(b);return}
   if(t.dataset.sw){setSwatch(t.dataset.sw);return}
   if(t.dataset.replace){const d=deckOf(t.dataset.replace);const cs=S.cards.filter(c=>c.deck===d.id).sort((a,b)=>(a.order??0)-(b.order??0));
