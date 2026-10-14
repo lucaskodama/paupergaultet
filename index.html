@@ -96,6 +96,8 @@ header.top{position:relative;z-index:10;background:color-mix(in srgb,var(--bg) 8
 .cn{min-width:0}
 .cn b{display:block;font-size:17px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
 .cn .sug{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.cm{color:var(--dc,var(--gold));font-weight:600;text-decoration:none;white-space:nowrap}
+.cm:hover{text-decoration:underline}
 .cn .paid{display:block;font-size:13px;color:var(--fg);margin-top:2px;font-weight:600}
 .cn .paid em{font-style:normal;color:var(--muted);font-weight:500}
 .cnt{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--muted);white-space:nowrap;padding-top:2px}
@@ -243,7 +245,8 @@ const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.
 const S={decks:[],cards:[],buys:[],settings:{},deck:null,board:"main",todo:false,logf:"all",tab:"decks",db:null,me:(()=>{try{return localStorage.getItem("gauntlet-name")||""}catch{return ""}})(),mode:"",key:"",ready:{d:0,c:0,b:0},readOnly:false};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fx=()=>Number(S.settings.fx)||16500;
+const fx=()=>Number(S.settings.eurfx)||20000;
+const cmURL=n=>"https://www.cardmarket.com/en/Magic/Products/Search?searchString="+encodeURIComponent(n);
 const rp=n=>"Rp "+Math.round(n||0).toLocaleString("id-ID");
 const rpk=n=>{n=Math.round(n||0);if(n>=1e6)return "Rp "+(n/1e6).toLocaleString("id-ID",{maximumFractionDigits:1})+"jt";if(n>=1e4)return "Rp "+Math.round(n/1e3).toLocaleString("id-ID")+"k";return rp(n)};
 const parseIDR=v=>{v=String(v||"").toLowerCase().replace(/rp|\s/g,"");if(!v)return NaN;let m=1;if(/jt$/.test(v)){m=1e6;v=v.slice(0,-2)}else if(/k$/.test(v)){m=1e3;v=v.slice(0,-1)}
@@ -271,7 +274,7 @@ function copyArr(c){const a=[];for(const b of buysFor(c.id))for(let k=0;k<(b.qty
 function ballsHTML(c,small){const n=got(c);const arr=copyArr(c);let h="";for(let i=0;i<c.need;i++){const st=i<n?(arr[i]?"arrived":"bought, not arrived yet"):"not bought";h+=`<button class="ball${i<n?" on":""}${i<n&&arr[i]?" arr":""}${small?" small":""}" data-ball="${c.id}" data-i="${i}" aria-label="${esc(c.name)} copy ${i+1} ${st}">${CHECK}</button>`}
   if(n>c.need)h+=`<span class="chip">+${n-c.need} extra</span>`;return h}
 function cardHTML(c){const n=got(c);const bs=buysFor(c.id);const sp=spentOn(c);const s=sugIDR(c.name);const i=info(c.name);
-  const sug=s!=null?`Suggested ${rpk(s)} each <span class="num">· $${i.m.toFixed(2)}</span>`:"No market price on file";
+  const sug=s!=null?`Suggested ${rpk(s)} each <span class="num">· €${i.m.toFixed(2)}</span> · <a class="cm" href="${cmURL(c.name)}" target="_blank" rel="noopener">Cardmarket ↗</a>`:"No market price on file";
   let paid="";if(bs.length){const eds=[...new Set(bs.map(b=>[b.set?b.set.toUpperCase():"",b.cond].filter(Boolean).join(" ")).filter(Boolean))];const wait=bs.filter(b=>!b.arrived).reduce((a,b)=>a+b.qty,0);paid=`<span class="paid">Paid ${rp(sp)} <em>for ${n} · avg ${rpk(sp/Math.max(1,n))}${eds.length?" · "+esc(eds.join(", ")):""}${wait?` · ${wait} on the way`:""}</em></span>`}
   return `<div class="card${n>=c.need&&c.need?" done":""}"><div class="ch"><div class="cn"><b>${esc(c.name)}</b><span class="sug">${sug}</span>${paid}</div><span class="cnt">${n}/${c.need}</span></div><div class="balls">${ballsHTML(c,c.need>8)}</div></div>`}
 function viewDecks(){
@@ -315,7 +318,7 @@ function viewSetup(){
    <label class="f">Cover picture (optional)<input id="fArt" type="file" accept="image/*"></label>
    <p class="hint" id="fNote">A blank line starts the sideboard. Prices and editions appear for cards already in this gauntlet; other cards can still be logged with a typed edition.</p>
    <div class="acts"><button class="btn gold wide" id="fSave">Add deck</button><button class="btn ghost wide" id="fCancel" hidden>Cancel</button></div></div>
-  <div class="panel"><h2 class="x">Price reference</h2><label class="f">Rupiah per US dollar (for suggested prices)<input id="fFx" inputmode="numeric" value="${fx()}"></label><p class="hint">Suggested prices are TCGplayer market prices for the cheapest paper printing (via Scryfall, ${esc(DATA.updated||"2 Oct 2026")}), converted at this rate.</p><button class="btn ghost" id="fFxSave">Save rate</button></div>`}
+  <div class="panel"><h2 class="x">Price reference</h2><label class="f">Rupiah per euro (for suggested prices)<input id="fFx" inputmode="numeric" value="${fx()}"></label><p class="hint">Suggested prices are Cardmarket price trends for the cheapest paper printing (via Scryfall, ${esc(DATA.updated||"")}), converted at this rate. Tap "Cardmarket ↗" on any card to see live offers and stock.</p><button class="btn ghost" id="fFxSave">Save rate</button></div>`}
 function render(){renderHeader();document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===S.tab));
   const y=window.scrollY;const keep=S.tab==="setup"?snapshotForm():null;
   $("#view").innerHTML=S.tab==="decks"?viewDecks():S.tab==="shop"?viewShop():S.tab==="log"?viewLog():viewSetup();
@@ -329,7 +332,7 @@ function closeSheet(){$("#sheetRoot").innerHTML=""}
 function sheet(html,deck){$("#sheetRoot").innerHTML=`<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" style="--dc:${dc(deck)}"><div class="grab"></div>${html}</div>`}
 function editionField(name,cur){const i=info(name);
   if(!i)return `<label class="f">Edition<input id="bSet" placeholder="Set name or code" value="${esc(cur||"")}" autocomplete="off"></label>`;
-  return `<label class="f">Edition<select id="bSet"><option value="">Not sure / any</option>${i.s.map(([c,p])=>`<option value="${c}" ${c===cur?"selected":""}>${esc(setName(c))}${p!=null?` — $${p.toFixed(2)}`:""}</option>`).join("")}</select></label>`}
+  return `<label class="f">Edition<select id="bSet"><option value="">Not sure / any</option>${i.s.map(([c,p])=>`<option value="${c}" ${c===cur?"selected":""}>${esc(setName(c))}${p!=null?` — €${p.toFixed(2)}`:""}</option>`).join("")}</select></label>`}
 function condField(cur){return `<label class="f">Condition</label><div class="conds" id="bCond">${CONDS.map(([k,v])=>`<button data-cond="${k}" aria-pressed="${k===(cur||"NM")}"><b>${k}</b><small>${v}</small></button>`).join("")}</div>`}
 function openBuy(rows,startQty){
   const name=rows[0].name;const deck=deckOf(rows[0].deck);
@@ -348,7 +351,7 @@ function openBuy(rows,startQty){
   ${condField(last?.cond)}
   <div class="acts"><button class="btn ghost" data-close>Cancel</button><button class="btn gold" id="bSave">Log ${q} bought</button></div>`,deck);
   let qty=q;const upd=()=>{const u=parseIDR($("#bUnit").value);$("#bTot").textContent=rp((isNaN(u)?0:u)*qty);$("#bSave").textContent=`Log ${qty} bought`;
-    const set=$("#bSet").tagName==="SELECT"?$("#bSet").value:"";const s=sugIDR(name,set);$("#bMkt").textContent=s!=null?`Market ${set?setName(set):"cheapest printing"}: ≈ ${rp(s)} each`:""};
+    const set=$("#bSet").tagName==="SELECT"?$("#bSet").value:"";const s=sugIDR(name,set);$("#bMkt").innerHTML=(s!=null?`Cardmarket ${esc(set?setName(set):"cheapest printing")}: ≈ ${rp(s)} each · `:"")+`<a class="cm" href="${cmURL(name)}" target="_blank" rel="noopener">Check offers ↗</a>`};
   $("#bQty").onclick=e=>{const b=e.target.closest("[data-q]");if(!b)return;qty=+b.dataset.q;document.querySelectorAll(".qb").forEach(x=>x.classList.toggle("on",+x.dataset.q<=qty));upd()};
   wireConds();$("#bUnit").oninput=upd;$("#bSet").onchange=upd;$("#bSet").oninput=upd;upd();
   $("#bSave").onclick=async()=>{const u=parseIDR($("#bUnit").value);if(isNaN(u)){toast("Enter the price in rupiah");$("#bUnit").focus();return}
@@ -419,7 +422,7 @@ document.addEventListener("click",async e=>{const t=e.target.closest("button,[da
   if(t.id==="pSave"){const v=$("#pName").value.trim();S.me=v;try{localStorage.setItem("gauntlet-name",v)}catch{}toast(v?`Saved. Purchases will show "${v}"`:"Name cleared");return}
   if(t.id==="pCopy"){const v=shareLink();try{await navigator.clipboard.writeText(v);toast("Link copied")}catch{const el=$("#pLink");const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Select and copy the link")}return}
   if(t.id==="gGo"){const k=$("#gKey").value.trim().toLowerCase();if(!/^[a-z0-9-]{12,64}$/.test(k)){toast("Passcode: at least 12 letters, numbers or dashes");return}try{localStorage.setItem("gauntlet-key",k)}catch{}location.reload();return}
-  if(t.id==="fFxSave"){const v=parseIDR($("#fFx").value);if(!(v>0)){toast("Enter a number");return}try{await S.db.doc("meta/settings").set({...S.settings,fx:v});toast("Rate saved")}catch(err){fail(err)}return}
+  if(t.id==="fFxSave"){const v=parseIDR($("#fFx").value);if(!(v>0)){toast("Enter a number");return}try{await S.db.doc("meta/settings").set({...S.settings,eurfx:v});toast("Rate saved")}catch(err){fail(err)}return}
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
 
